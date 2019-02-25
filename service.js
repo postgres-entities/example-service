@@ -12,10 +12,18 @@ const {createEntityManager, todoEntity} = require('./entities');
 
 async function main() {
 
-  // Determine which connection string to use
-  let connectionString = process.env.DATABASE_URL;
+  // Small hack: Assume that non-localhost database servers
+  // are running over ssl.
 
-  let entityManager = createEntityManager({connectionString});
+  let dbUrl = process.env.DATABASE_URL;
+
+  let {hostname} = new URL(dbUrl);
+  
+  if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+    dbUrl = `${dbUrl}?ssl=true`
+  }
+
+  let entityManager = createEntityManager({connectionString: dbUrl});
 
   // All bodies should be treated as JSON documents
   app.use(bodyParser.json({type: "*/*"}));
