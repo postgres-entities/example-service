@@ -21,6 +21,7 @@ const todoEntity = new PGEntity({
       completed: PGBooleanField,
       due: PGDateField,
     },
+    indexes: ['todoId', 'priority', 'completed', 'due'],
   }],
 });
 
@@ -48,11 +49,9 @@ async function runQueries(createOrDrop, connectionString, adminConnectionString)
   }
 
   try {
-    await adminManager.write.runInTx(async tx => {
-      for (let query of queries) {
-        await tx.query(query);
-      }
-    });
+    for (let query of queries) {
+      await adminManager.write.query(query);
+    }
   } finally {
     await manager.close();
     await adminManager.close();

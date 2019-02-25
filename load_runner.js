@@ -58,26 +58,31 @@ async function test() {
     await request({id});
     await request({id});
 
-    await request({
-      id,
-      method: 'POST',
-      body: JSON.stringify({
-        todoId: id,
-        priority: Math.floor(Math.random() * 10) + 1,
-        title: 'dirty kitchen',
-        body: 'make sure the kitchen is dirty',
-        due: new Date(),
-        completed: true,
-      }),
-    });
+    // Mark 20% of tasks completed
+    if (Math.random() < 0.2) {
+      await request({
+        id,
+        method: 'POST',
+        body: JSON.stringify({
+          todoId: id,
+          priority: Math.floor(Math.random() * 10) + 1,
+          title: 'dirty kitchen',
+          body: 'make sure the kitchen is dirty',
+          due: new Date(),
+          completed: true,
+        }),
+      });
+    }
 
     await request({id});
     await request({id});
     await request({id});
 
+    // Delete 10% of tasks completed
     if (Math.random() < 0.1) {
       await request({id, method: 'DELETE'});
     }
+
     let end = process.hrtime.bigint();
     let duration = Number(end - start) / 1e9;
     console.log(`PID:${process.pid} generated load of ${n/duration} req/s`);

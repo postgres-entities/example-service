@@ -5,6 +5,8 @@ const debug = require('debug')('example-service');
 const cluster = require('cluster');
 const numCPUs = require('os').cpus().length;
 
+const {PGEntityQuery} = require('postgres-entities');
+
 const app = express()
 const port = process.env.PORT || 5555;
 
@@ -130,6 +132,84 @@ async function main() {
         return res.status(400).end();
       }
       return res.status(500).end();
+    }
+  });
+
+  app.get('/todo-outstanding', async (req, res) => {
+    let continuationToken = req.query.continuationToken;
+    try { 
+      let response = await todoEntity.fetchPage({
+        continuationToken,
+        quantity: 250,
+        queryBuilder: query => {
+          query.compare('completed', false);
+        },
+      });
+      if (response.continuationToken) {
+        res.set('X-Continuation-Token', response.continuationToken);
+      }
+      res.write(JSON.stringify({
+        todos: response.documents.map(doc => doc.__json()),
+        continuationToken: response.continuationToken,
+      }, null, 2));
+      res.status(200).end();
+    } catch (err) {
+      return res.status(500).end();
+    }
+  });
+
+  app.get('/todo-overdue', async (req, res) => {
+    let continuationToken = req.query.continuationToken;
+    try { 
+      let response = await todoEntity.fetchPage({
+        continuationToken,
+        quantity: 250,
+        queryBuilder: query => {
+          query
+            .compare('completed', false)
+            .and.compare('due', PGEntityQuery.comp.lte, PGEntityQuery.NOW);
+        },
+      });
+      if (response.continuationToken) {
+        res.set('X-Continuation-Token', response.continuationToken);
+      }
+      res.write(JSON.stringify({
+        todos: response.documents.map(doc => doc.__json()),
+        continuationToken: response.continuationToken,
+      }, null, 2));
+      res.status(200).end();
+    } catch (err) {
+      return res.status(500).end();
+    }
+  });
+
+  app.get('/todo', async (req, res) => {
+    let continuationToken = req.query.continuationToken;
+    try { 
+      let response = await todoEntity.fetchPage({continuationToken, quantity: 250});
+      if (response.continuationToken) {
+        res.set('X-Continuation-Token', response.continuationToken);
+      }
+      res.write(JSON.stringify({
+        todos: response.documents.map(doc => doc.__json()),
+        continuationToken: response.continuationToken,
+      }, null, 2));
+      res.status(200).end();
+    } catch (err) {
+      return res.status(500).end();
+    }
+  });
+
+
+  app.get('/todo-stream', async (req, res) => {
+    try {
+      await todoEntity.documentStream(row => {
+        res.write(JSON.stringify(row.__json()) + '\n');
+      }, {batchSize: 250});
+      res.status(200).end();
+    } catch (err) {
+      debug(err);
+      res.status(500).end();
     }
   });
 
