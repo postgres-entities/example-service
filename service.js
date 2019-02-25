@@ -40,10 +40,7 @@ async function main() {
 
       let document = await todoEntity.load({todoId: id});
 
-      console.dir(document);
-      
       return res.send(JSON.stringify(document.__json()));
-
     } catch (err) {
       console.dir(err);
       if (err.code === 'PGEntityNotFoundError') {
