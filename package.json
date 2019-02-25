@@ -7,7 +7,8 @@
   "dependencies": {
     "body-parser": "^1.18.3",
     "express": "^4.16.4",
-    "postgres-entities": "^1.1.0"
+    "postgres-entities": "^1.1.0",
+    "uuid": "^3.3.2"
   },
   "scripts": {
     "start": "node service.js",
