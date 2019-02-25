@@ -346,10 +346,10 @@ postgres-date@~1.0.0:
   resolved "https://registry.yarnpkg.com/postgres-date/-/postgres-date-1.0.3.tgz#e2d89702efdb258ff9d9cee0fe91bd06975257a8"
   integrity sha1-4tiXAu/bJY/52c7g/pG9BpdSV6g=
 
-postgres-entities@^1.0.1:
-  version "1.0.1"
-  resolved "https://registry.yarnpkg.com/postgres-entities/-/postgres-entities-1.0.1.tgz#ee5b782ff4b9ebdfe64511e99215f3b9158f1818"
-  integrity sha512-se6wTAbQ83bth1efrg3l1mCcZRBdoWDkA31OwUbcLwHV49iS0heCDJMSxHab2RNARsI4Eh5fuorOqzFXcLZEKg==
+postgres-entities@^1.1.0:
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/postgres-entities/-/postgres-entities-1.1.0.tgz#befb02ecf89c05397a3d7046df1ebe76477dd598"
+  integrity sha512-SAZi16xxnN2+wAtMr5+M2fFg+/8BeMGobNGtCMXM0sGYSd9ILUy7r7xZlBULSEn5sE+Aum19t5MnRWf+O5I7xw==
   dependencies:
     pg "^7.8.0"
     pg-cursor "^2.0.0"
