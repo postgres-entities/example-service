@@ -8,65 +8,21 @@ const numCPUs = require('os').cpus().length;
 const app = express()
 const port = process.env.PORT || 5555;
 
-
-const {
-  PGEntityManager,
-  PGEntity,
-  PGEntityDocument,
-  PGIntegerField,
-  PGStringField, 
-  PGDateField,
-} = require('../');
-
-const {setup} = require('./init-service');
-
-const PGDATA = process.env.PGDATA || 'example-service-pgdir';
-const PGPORT = '5454';
-
+const {createEntityManager} = require('./entities');
 
 async function main() {
 
   // Determine which connection string to use
-  let connectionString = await setup();
+  let connectionString = process.env.DATABASE_URL;
 
-  // Each service needs an Entity Manager
-  const entityManager = new PGEntityManager({
-    service: 'todo-list',
-    connectionString,
-  });
-
-  // Define the structure of a Todo item entity
-  const todoItem = new PGEntity({
-    name: 'todo-item',
-    id: ['todoId'],
-    versions: [{
-      fields: {
-        'todoId': PGStringField,
-        'priority': PGIntegerField,
-        'title': PGStringField,
-        'body': PGStringField,
-        'due': PGDateField,
-      },
-    }],
-    manager: entityManager,
-  });
-
-  try {
-    // Ensure the schema is created
-    await entityManager.write.runInTx(async tx => {
-      for (let query of entityManager.psqlCreateQueries) {
-        await tx.query(query);
-      }
-    });
-  } catch (err) {
-  }
+  let entityManager = createEntityManager({connectionString});
 
   // All bodies should be treated as JSON documents
   app.use(bodyParser.json({type: "*/*"}));
 
   // Define the Rest API
   app.get('/', (req, res) => {
-    res.send('Hello, world');
+    res.send('Welcome to the TODO Application!');
   });
 
   app.get('/todo/:id', async (req, res) => {
@@ -74,7 +30,7 @@ async function main() {
       let id = req.params.id;
       debug('Loading ' + id);
       
-      return res.send(JSON.stringify(await todoItem.load(id)));
+      return res.send(JSON.stringify(await todoItem.load({todoId: id})));
     } catch (err) {
       console.dir(err);
       if (err.code === 'PGEntityNotFoundError') {
@@ -103,6 +59,7 @@ async function main() {
           title: payload.title,
           body: payload.body,
           due: new Date(payload.due),
+          completed: payload.completed,
         }
       });
 
