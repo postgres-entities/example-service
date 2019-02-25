@@ -34,25 +34,38 @@ function createEntityManager({connectionString}) {
   return manager;
 }
 
+async function runQueries(createOrDrop, connectionString, adminConnectionString) {
+  let adminManager = createEntityManager({connectionString: adminConnectionString || connectionString});
+  let manager = createEntityManager({connectionString: connectionString});
+  let queries;
+
+  if (createOrDrop === 'create') {
+    queries = manager.psqlCreateQueries;
+  } else if (createOrDrop === 'drop') {
+    queries = manager.psqlDropQueries;
+  } else {
+    throw new Error('Must specify create or drop');
+  }
+
+  try {
+    await adminManager.write.runInTx(async tx => {
+      for (let query of queries) {
+        await tx.query(query);
+      }
+    });
+  } finally {
+    await manager.close();
+    await adminManager.close();
+  }
+
+}
+
 async function main() {
   let createOrDrop = process.argv[2];
   let connectionString = process.argv[3] || process.env.DATABASE_URL;
-  console.log('Connecting to :', connectionString);
-  let manager = createEntityManager({connectionString});
-  try {
-    if (createOrDrop === 'create') {
-      console.log(createOrDrop);
-      await manager.createSchema();
-    } else if (createOrDrop === 'drop') {
-      console.log(createOrDrop);
-      await manager.dropSchema();
-    } else {
-      throw new Error('Must specify create or drop');
-    }
-  } finally {
-    await manager.close();
-    console.log('Done!');
-  }
+  let adminConnectionString = process.argv[4] || process.env.ADMIN_DATABASE_URL;
+
+  await runQueries(createOrDrop, connectionString, adminConnectionString);
 }
 
 module.exports = {todoEntity, createEntityManager};

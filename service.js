@@ -8,7 +8,7 @@ const numCPUs = require('os').cpus().length;
 const app = express()
 const port = process.env.PORT || 5555;
 
-const {createEntityManager} = require('./entities');
+const {createEntityManager, todoEntity} = require('./entities');
 
 async function main() {
 
@@ -29,8 +29,13 @@ async function main() {
     try {
       let id = req.params.id;
       debug('Loading ' + id);
+
+      let document = await todoEntity.load({todoId: id});
+
+      console.dir(document);
       
-      return res.send(JSON.stringify(await todoItem.load({todoId: id})));
+      return res.send(JSON.stringify(document.__json()));
+
     } catch (err) {
       console.dir(err);
       if (err.code === 'PGEntityNotFoundError') {
@@ -52,19 +57,19 @@ async function main() {
       }
 
       // Create a document and then insert it
-      let document = todoItem.createDocument({
+      let document = todoEntity.createDocument({
         value: {
           todoId: id,
           priority: payload.priority,
           title: payload.title,
           body: payload.body,
           due: new Date(payload.due),
-          completed: payload.completed,
+          completed: !!payload.completed,
         }
       });
 
       // TODO Demonstrate eventual consistency
-      await todoItem.insert(document);
+      await todoEntity.insert(document);
       res.status(200).end();
     } catch (err) {
       console.dir(err);
@@ -88,14 +93,15 @@ async function main() {
       }
 
       // Create a document and then insert it
-      let document = await todoItem.load(id);
+      let document = await todoEntity.load({todoId: id});
 
-      await todoItem.update(document, () => {
+      await todoEntity.update(document, () => {
         document.todoId = payload.todoId;
         document.priority = payload.priority;
         document.title = payload.title;
         document.body = payload.body;
         document.due = new Date(payload.due);
+        document.completed = !!payload.completed;
       });
       res.status(200).end();
     } catch (err) {
@@ -111,8 +117,8 @@ async function main() {
     try {
       let id = req.params.id;
       debug('Removing ' + id);
-      let document = await todoItem.load(id)
-      await todoItem.remove(document);
+      let document = await todoEntity.load({todoId: id});
+      await todoEntity.remove(document);
       res.status(200).end();
     } catch (err) {
       if (err.code === 'PGEntityNotFoundError') {
