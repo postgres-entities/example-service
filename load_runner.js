@@ -10,9 +10,16 @@ const baseUrl = {
   port: process.env.SVC_PORT || 5555,
 }
 
-async function request({method='GET', id, body}) {
+async function _request({method='GET', path, body, query}) {
   return new Promise((resolve, reject) => {
-    let request = http.request(Object.assign({path: '/todo/' + id, method}, baseUrl), res => {
+
+    if (query) {
+      path = `${path}?${new URLSearchParams(query).toString()}`;
+    }
+
+    let start = process.hrtime.bigint();
+
+    let request = http.request(Object.assign({path, method}, baseUrl), res => {
       let body = [];
       res.once('error', reject);
       res.on('data', chunk => {
@@ -23,6 +30,8 @@ async function request({method='GET', id, body}) {
         if (res.statusCode >= 300) {
           return reject(body.toString());
         }
+        let end = process.hrtime.bigint();
+        let duration = Number(end - start) / 1e9;
         return resolve(body);
       });
     });
@@ -35,58 +44,118 @@ async function request({method='GET', id, body}) {
   });
 }
 
-async function test() {
-  let n = 10;
+async function request({method='GET', id, body}) {
+  return _request({method, path: '/todo/'+id, body});
+}
 
+async function reqWithContinuationToken({method='GET', endpoint='/todo', body}) {
+  let continuationToken;
+
+  do {
+    let req = {
+      method,
+      path: endpoint,
+      body,
+    };
+
+    if (continuationToken) {
+      req.query = {continuationToken};
+    }
+
+    let _body = JSON.parse(await _request(req));
+
+    continuationToken = _body.continuationToken;
+
+  } while (continuationToken);
+}
+
+async function stream() {
   while (true) {
-    let start = process.hrtime.bigint();
-    let id = uuid.v4();
+    try {
+      let start = process.hrtime.bigint();
 
-    await request({
-      id,
-      method: 'PUT',
-      body: JSON.stringify({
-        todoId: id,
-        priority: Math.floor(Math.random() * 10) + 1,
-        title: 'clean kitchen',
-        body: 'make sure the kitchen is clean',
-        due: new Date(),
-        completed: false,
-      }),
-    });
+      await _request({path: '/todo-stream'});
 
-    await request({id});
-    await request({id});
+      let end = process.hrtime.bigint();
+      let duration = Number(end - start) / 1e9;
+    } catch (err) {
+      console.dir(err);
+    }
+  }
 
-    // Mark 20% of tasks completed
-    if (Math.random() < 0.2) {
+}
+
+async function paginate() {
+  while (true) {
+    try {
+      let start = process.hrtime.bigint();
+
+      await reqWithContinuationToken({endpoint: '/todo'});
+
+      let end = process.hrtime.bigint();
+      let duration = Number(end - start) / 1e9;
+    } catch (err) {
+      console.dir(err);
+    }
+  }
+}
+
+async function test() {
+  try {
+    while (true) {
+      let id = uuid.v4();
+
+
+      /*await reqWithContinuationToken({endpoint: '/todo-overdue'});
+
+      if (Math.random() < 0.01) {
+        await reqWithContinuationToken({endpoint: '/todo'});
+      }*/
+
       await request({
         id,
-        method: 'POST',
+        method: 'PUT',
         body: JSON.stringify({
           todoId: id,
           priority: Math.floor(Math.random() * 10) + 1,
-          title: 'dirty kitchen',
-          body: 'make sure the kitchen is dirty',
+          title: 'clean kitchen',
+          body: 'make sure the kitchen is clean',
           due: new Date(),
-          completed: true,
+          completed: false,
         }),
       });
-    }
 
-    await request({id});
-    await request({id});
-    await request({id});
+      await request({id});
+      await request({id});
 
-    // Delete 10% of tasks completed
-    if (Math.random() < 0.1) {
-      await request({id, method: 'DELETE'});
-    }
+      // Mark 20% of tasks completed
+      if (Math.random() < 0.2) {
+        await request({
+          id,
+          method: 'POST',
+          body: JSON.stringify({
+            todoId: id,
+            priority: Math.floor(Math.random() * 10) + 1,
+            title: 'dirty kitchen',
+            body: 'make sure the kitchen is dirty',
+            due: new Date(),
+            completed: true,
+          }),
+        });
+      }
 
-    let end = process.hrtime.bigint();
-    let duration = Number(end - start) / 1e9;
-    console.log(`PID:${process.pid} generated load of ${n/duration} req/s`);
-  };
+      await request({id});
+      await request({id});
+      await request({id});
+
+      // Delete 10% of tasks completed
+      if (Math.random() < 0.1) {
+        await request({id, method: 'DELETE'});
+      }
+    };
+  } catch (err) {
+    console.dir(err);
+  }
 }
 
 if (cluster.isMaster) {
@@ -104,9 +173,14 @@ if (cluster.isMaster) {
   });
 } else {
   Promise.race([
+    stream(),
+    paginate(),
     test(),
     test(),
     test(),
     test(),
-  ]).catch(console.error);
+  ]).catch(err => {
+    console.dir(err);
+    process.exit(1);
+  });
 }

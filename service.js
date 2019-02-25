@@ -202,9 +202,13 @@ async function main() {
 
 
   app.get('/todo-stream', async (req, res) => {
+    res.setHeader('Transfer-Encoding', 'chunked');
     try {
       await todoEntity.documentStream(row => {
         res.write(JSON.stringify(row.__json()) + '\n');
+        if (req.aborted) {
+          throw new Error('Response aborted');
+        }
       }, {batchSize: 250});
       res.status(200).end();
     } catch (err) {
