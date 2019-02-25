@@ -1,7 +1,7 @@
 'use strict';
 
 const cluster = require('cluster');
-const numCPUs = 1//require('os').cpus().length;
+const numCPUs = require('os').cpus().length;
 const uuid = require('uuid');
 const http = require('http');
 
