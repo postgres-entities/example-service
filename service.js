@@ -140,7 +140,7 @@ async function main() {
     try { 
       let response = await todoEntity.fetchPage({
         continuationToken,
-        quantity: 250,
+        quantity: 2000,
         queryBuilder: query => {
           query.compare('completed', false);
         },
@@ -163,7 +163,7 @@ async function main() {
     try { 
       let response = await todoEntity.fetchPage({
         continuationToken,
-        quantity: 250,
+        quantity: 2000,
         queryBuilder: query => {
           query
             .compare('completed', false)
@@ -186,7 +186,7 @@ async function main() {
   app.get('/todo', async (req, res) => {
     let continuationToken = req.query.continuationToken;
     try { 
-      let response = await todoEntity.fetchPage({continuationToken, quantity: 250});
+      let response = await todoEntity.fetchPage({continuationToken, quantity: 2000});
       if (response.continuationToken) {
         res.set('X-Continuation-Token', response.continuationToken);
       }
@@ -209,7 +209,7 @@ async function main() {
         if (req.aborted) {
           throw new Error('Response aborted');
         }
-      }, {batchSize: 250});
+      }, {batchSize: 2000});
       res.status(200).end();
     } catch (err) {
       debug(err);
