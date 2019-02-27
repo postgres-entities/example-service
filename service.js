@@ -3,7 +3,9 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const debug = require('debug')('example-service');
 const cluster = require('cluster');
-const numCPUs = require('os').cpus().length;
+let numCPUs = process.env.WEB_CONCURRENCY || require('os').cpus().length;
+
+numCPUs = Number.parseInt(numCPUs);
 
 const {PGEntityQuery} = require('postgres-entities');
 
@@ -19,13 +21,23 @@ async function main() {
 
   let dbUrl = process.env.DATABASE_URL;
 
+  let readDbUrl = process.env.HEROKU_POSTGRESQL_SILVER_URL;
+
+  if (readDbUrl) {
+    readDbUrl = readDbUrl + '?ssl=true';
+  }
+
+
   let {hostname} = new URL(dbUrl);
   
   if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
     dbUrl = `${dbUrl}?ssl=true`
   }
 
-  let entityManager = createEntityManager({connectionString: dbUrl});
+  let entityManager = createEntityManager({
+    connectionString: dbUrl,
+    readConnectionString: readDbUrl,
+  });
 
   // All bodies should be treated as JSON documents
   app.use(bodyParser.json({type: "*/*"}));
@@ -228,20 +240,26 @@ async function main() {
   });
 }
 
-if (cluster.isMaster) {
-  console.log(`Master ${process.pid} is running`);
-
-  // Fork workers.
-  for (let i = 0; i < numCPUs; i++) {
-    cluster.fork();
-  }
-
-  cluster.on('exit', (worker, code, signal) => {
-    console.log(`worker ${worker.process.pid} died`);
-    cluster.fork();
-  });
+if (process.env.NOCLUSTER) {
+    main().then(() => {
+      console.log('Started up');
+    }, console.error);
 } else {
-  main().then(() => {
-    console.log(`Worker ${process.pid} started`);
-  }, console.error);
+  if (cluster.isMaster) {
+    console.log(`Master ${process.pid} is running`);
+
+    // Fork workers.
+    for (let i = 0; i < numCPUs; i++) {
+      cluster.fork();
+    }
+
+    cluster.on('exit', (worker, code, signal) => {
+      console.log(`worker ${worker.process.pid} died`);
+      cluster.fork();
+    });
+  } else {
+    main().then(() => {
+      console.log(`Worker ${process.pid} started`);
+    }, console.error);
+  }
 }

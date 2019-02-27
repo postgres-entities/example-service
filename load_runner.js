@@ -1,9 +1,11 @@
 'use strict';
 
 const cluster = require('cluster');
-const numCPUs = require('os').cpus().length;
+let numCPUs = process.env.WEB_CONCURRENCY || require('os').cpus().length;
 const uuid = require('uuid');
 const http = require('http');
+
+numCPUs = Number.parseInt(numCPUs);
 
 const baseUrl = {
   hostname: process.env.SVC_HOSTNAME || '127.0.0.1',
@@ -173,7 +175,7 @@ if (cluster.isMaster) {
   });
 } else {
   Promise.race([
-    stream(),
+//    stream(),
     paginate(),
     test(),
     test(),
